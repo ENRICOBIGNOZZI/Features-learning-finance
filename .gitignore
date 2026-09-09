@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.DS_Store
+
+# Data are local / licensed and must never be committed.
+data/
+*.parquet
+*.pt
+*.npz
+
+# Empirical outputs can be regenerated.
+results/
+
+# Secrets
+.env
+*.pem
+
+*.egg-info/
