@@ -1,0 +1,21 @@
+name: Package research snapshot
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build repository archive
+        run: git archive --format=zip --output=Features-learning-finance_20260910.zip HEAD
+      - name: Upload snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: features-learning-finance-snapshot
+          path: |
+            Features-learning-finance_20260910.zip
+            paper/main.pdf
