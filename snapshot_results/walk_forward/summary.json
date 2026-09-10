@@ -1,0 +1,11 @@
+{
+  "seeds": 5,
+  "individual_sharpe_mean": 1.970713868278929,
+  "individual_sharpe_median": 2.1424052683783956,
+  "individual_sharpe_min": 1.2426587181993465,
+  "individual_sharpe_max": 2.2347870627849167,
+  "ensemble_sharpe": 2.210170085979485,
+  "ensemble_ci_low": 1.569983052070157,
+  "ensemble_ci_high": 2.970731904414908,
+  "months": 120
+}

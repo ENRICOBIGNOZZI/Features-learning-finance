@@ -1,15 +1,20 @@
 \begin{threeparttable}
-\begin{tabular}{lcc}
+\begin{tabular}{lrr}
 \toprule
-Specification & Validation SR & Test SR \\
+Specification & Validation SR & Evaluation SR \\
 \midrule
-Representative neural model, $K_{\max}=32$ & 2.31 & 1.44 \\
-10-seed mean, $K_{\max}=32$ & 2.45 & 1.38 \\
-10-seed ensemble & -- & 1.49 \\
-Linear managed-portfolio baseline & 2.34 & 1.53 \\
+\multicolumn{3}{l}{\textit{Panel A: Fixed-split estimation}} \\
+Representative neural model, $K_{\max}=32$ & 2.52 & 1.68 \\
+10-seed mean, $K_{\max}=32$ & 2.57 & 1.79 \\
+10-seed neural ensemble & -- & 1.90 \\
+Linear managed-portfolio baseline & 2.70 & 1.51 \\
+\addlinespace
+\multicolumn{3}{l}{\textit{Panel B: Expanding-window estimation}} \\
+5-seed recursive neural ensemble & -- & 2.21 \\
+Recursive linear managed portfolio & -- & 1.57 \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}\footnotesize
-\item Training: 1963--2004; validation: 2005--2014; test: 2015--2024. The representative seed is selected by validation performance, not test performance. Walk-forward estimation is implemented but still running in this snapshot.
+\item Fixed-split training is 1963--2004, validation 2005--2014, and evaluation 2015--2024. The representative seed is closest to median validation Sharpe among ten $K_{\max}=32$ runs, with ties broken by seed index. Recursive rows re-estimate on an expanding information set before every payoff year; the linear ridge penalty is fixed before 2015.
 \end{tablenotes}
 \end{threeparttable}

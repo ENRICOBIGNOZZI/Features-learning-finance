@@ -9,6 +9,7 @@
 \usepackage{xcolor}
 \usepackage{enumitem}
 \usepackage{microtype}
+\usepackage[section]{placeins}
 \onehalfspacing
 \hypersetup{colorlinks=true,citecolor=blue,linkcolor=blue,urlcolor=blue}
 \newtheorem{proposition}{Proposition}
@@ -22,7 +23,7 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-A large literature documents hundreds of stock characteristics with predictive content, but it is unclear whether this high-dimensional characteristic zoo represents many distinct investment opportunities or a much lower-dimensional nonlinear structure. We estimate that structure directly from an investor's objective. A neural network maps firm characteristics into a small collection of characteristic-managed portfolios and combines them using aggregate market conditions and a learned summary of the current cross-section. The entire system is trained end-to-end to recover the conditional tangency portfolio, without first forecasting each stock's expected return and without pre-specifying factor definitions. We introduce a rotation-invariant economic allocation spectrum that orders the learned factor space by its use in the portfolio and yields an endogenous effective factor dimension. In U.S. equities from 1963 to 2024, the model compresses 123 firm characteristics, a size rank, and their nonlinear interactions into a small number of economically active directions. The leading factor combines momentum, profitability and quality, earnings information, growth, and avoidance of extreme recent winners, while its allocation varies systematically with market volatility and cross-sectional dispersion. The learned factor remains economically important after spanning by standard factor models. These findings suggest that the cross-section can be high-dimensional in observables while remaining low-dimensional in the nonlinear combinations that matter for portfolio choice.
+A large literature documents hundreds of stock characteristics with predictive content, but it is unclear whether this high-dimensional characteristic zoo represents many distinct investment opportunities or a much lower-dimensional nonlinear structure. We estimate that structure directly from an investor's objective. A neural network maps firm characteristics into characteristic-managed portfolios and combines them using aggregate market conditions and a learned summary of the current cross-section. The system is trained end-to-end for the conditional tangency portfolio, without first forecasting stock-level expected returns or pre-specifying factor definitions. In U.S. equities from 1963 to 2024, increasing maximum factor capacity from 1 to 32 raises mean 2015--2024 out-of-sample Sharpe from 1.43 to 1.79 across ten random initializations, while a ten-seed ensemble reaches 1.90 versus 1.51 for a linear characteristic benchmark. Yet the learned stock-weight rule remains sharply concentrated: its rotation-invariant policy entropy rank is 1.11, and two canonical traded directions reproduce the full portfolio with 0.53\% relative payoff mean-squared error. The leading factor combines momentum, profitability and quality, earnings information, growth, and avoidance of extreme recent winners. It earns positive spanning alphas against standard models and retains economic value after trading costs. The characteristic zoo is therefore high-dimensional in observables but much lower-dimensional in the nonlinear combinations that survive into portfolio choice.
 \end{abstract}
 
 \vspace{0.3cm}
@@ -94,7 +95,7 @@ The best rank-$K$ separable approximation truncates this expansion after $K$ ter
 The distinction between $\widetilde\phi_t$ and $b_t$ is important. Firm characteristics determine the composition of the learned factors. Aggregate and cross-sectional states determine the desired exposure to those factors. We deliberately do not allow $M_t$ to redefine the factor identities each month. This makes the learned factors economically traceable over time while preserving conditional portfolio choice.
 
 \subsection{Economic training objective}
-A generic neural network could be trained to minimize stock-level forecast errors and then passed to a separate optimizer. We instead train the entire architecture on the final portfolio. For any portfolio payoff $R^p$, define
+Rather than forecast stock returns and pass them to a separate optimizer, we train the entire architecture on the final portfolio. For any portfolio payoff $R^p$, define
 \begin{equation}
 \mathcal{J}(R^p)=\frac{\mathbb{E}[R^p]}{\sqrt{\mathbb{E}[(R^p)^2]}}.
 \label{eq:tangency_score}
@@ -141,7 +142,7 @@ The baseline objective is deliberately frictionless so that factor discovery is 
 
 \section{The Learned Factor Structure}\label{sec:results}
 \subsection{Portfolio performance}
-Table~\ref{tab:baseline} reports the current fixed-split evidence. The representative $K_{\max}=32$ model achieves an annualized holdout Sharpe ratio of \BaselineTestSharpe, while an equal-weighted ensemble across ten random initializations reaches 1.49. A linear managed-portfolio benchmark reaches 1.53 over the same 2015--2024 test period. Thus the present evidence does not support a claim that nonlinearity raises average holdout Sharpe on the long sample; its stronger contribution is to organize a rich characteristic space into a low-dimensional investment policy. The annual expanding-window exercise is implemented and is reported separately once complete.
+Table~\ref{tab:baseline} reports the fixed-split evidence. Across ten random initializations, the $K_{\max}=32$ network delivers a mean holdout Sharpe ratio of \MeanTestSharpe, and an equal-weighted ensemble of the ten neural portfolio returns reaches \EnsembleTestSharpe. The linear managed-portfolio benchmark reaches \LinearTestSharpe over the same 2015--2024 period. The ensemble improvement is 0.39 Sharpe points; a 12-month circular-block bootstrap gives a 95\% interval of $[-0.51,1.13]$, so we treat the improvement as economically suggestive rather than statistically decisive. More important for the paper's interpretation, performance continues to rise with representation capacity while the implemented policy remains strongly concentrated in a few directions.
 
 \begin{table}[t]
 \centering
@@ -149,26 +150,62 @@ Table~\ref{tab:baseline} reports the current fixed-split evidence. The represent
 \input{tables/baseline_performance.tex}
 \end{table}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{figures/equity_flagship.pdf}
+\caption{Out-of-sample cumulative performance, 2015--2024. For visual comparability only, each line is rescaled ex post to 10\% annualized volatility; this rescaling leaves Sharpe ratios unchanged. The neural line is the equal-weighted ensemble of ten $K_{\max}=32$ runs. Benchmark tangency weights are estimated before 2015.}
+\label{fig:equityflagship}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{figures/rolling_sharpe.pdf}
+\caption{Thirty-six-month rolling out-of-sample Sharpe ratios. The figure shows whether performance is persistent through time rather than concentrated in one episode.}
+\label{fig:rollingsharpe}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.86\textwidth]{figures/drawdown.pdf}
+\caption{Out-of-sample drawdowns at a common 10\% annualized volatility. Volatility matching is applied ex post and only facilitates comparison of the path of losses across strategies.}
+\label{fig:drawdown}
+\end{figure}
+
 The model is not designed to forecast every stock accurately. Its object is the portfolio payoff. This distinction matters empirically: improvements in the portfolio can arise from learning a stable ranking of economically useful characteristic combinations even when individual monthly stock returns remain mostly unpredictable.
 
 \subsection{Nominal versus economic factor dimension}
-The first main result is a sharp compression of the factor space. Although the baseline architecture permits multiple latent factors, the economic allocation spectrum is strongly concentrated. The entropy effective dimension is \KEff, and the first canonical direction accounts for \FirstShare\ of total allocation intensity. Figure~\ref{fig:spectrum} plots the spectrum.
+The first main result is a sharp compression of the learned portfolio rule. Although the baseline architecture allows $K_{\max}=32$ latent factor coordinates, the rotation-invariant policy spectrum is strongly concentrated. The entropy policy dimension is \KEff, and the first policy direction accounts for \FirstShare\ of total spectrum mass. Figure~\ref{fig:spectrum} shows both the leading eigenvalues and their cumulative share.
 \begin{figure}[t]
 \centering
-\IfFileExists{figures/economic_spectrum.pdf}{\includegraphics[width=0.72\textwidth]{figures/economic_spectrum.pdf}}{\fbox{\parbox[c][2.2in][c]{0.68\textwidth}{\centering Economic allocation spectrum placeholder}}}
-\caption{Economic allocation spectrum. The figure reports the normalized eigenvalues of the canonical allocation operator in \eqref{eq:economic_operator}.}
+\includegraphics[width=0.86\textwidth]{figures/policy_spectrum.pdf}
+\caption{Policy spectrum of the learned stock-weight rule. The left panel reports the leading normalized eigenvalues of the rotation-invariant policy operator; the right panel reports cumulative spectrum mass. The spectrum measures effective separable characteristic-by-state complexity, not the number of equilibrium risk factors.}
 \label{fig:spectrum}
 \end{figure}
 
-The distinction between $K$ and $K_{\mathrm{eff}}$ is economically useful. A network with many parameters and a large latent bottleneck can still learn that only a small number of characteristic-managed portfolios deserve material allocation. Rich functional approximation and parsimonious economic structure are therefore complements rather than substitutes.
+Low policy dimension is not only a spectral statement. We also truncate the canonical traded-factor representation out of sample. With only two canonical directions, the reconstructed portfolio has a correlation of 0.997 with the full portfolio and a relative payoff MSE of 0.53\%; its Sharpe ratio is 1.68, essentially the same as the full representative model. Figure~\ref{fig:truncation} shows how rapidly the economic payoff is recovered as directions are added.
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.86\textwidth]{figures/truncation.pdf}
+\caption{Out-of-sample truncation of the canonical traded-factor representation. The left panel reports Sharpe as canonical directions are retained; the right panel reports relative payoff mean-squared error on a logarithmic scale.}
+\label{fig:truncation}
+\end{figure}
 
-The $K$-sweep makes this point directly. If additional factors uncover genuinely independent opportunities, holdout performance and $K_{\mathrm{eff}}$ should rise together. If they merely offer redundant coordinates, nominal capacity rises while the economic spectrum remains concentrated. Table~\ref{tab:kgrid} reports the distribution across random seeds.
+The distinction between nominal capacity and economic dimension is therefore useful. A network can use many parameters to synthesize nonlinear characteristic interactions while the final investment rule remains close to a very low-rank policy. Rich functional approximation and parsimonious economic structure are complements rather than substitutes.
+
+The $K$-sweep makes this point directly. Table~\ref{tab:kgrid} uses the full 1963--2004 training sample, 2005--2014 validation sample, and 2015--2024 evaluation sample. Mean holdout Sharpe rises from 1.43 at $K_{\max}=1$ to 1.79 at $K_{\max}=32$, while the mean allocation rank rises only from 1.00 to 1.36. Thus additional representational capacity is useful for synthesizing better characteristic interactions, but it does not translate one-for-one into additional economically active portfolio directions.
 
 \begin{table}[t]
 \centering
 \caption{Maximum Factor Capacity and Economic Dimension}\label{tab:kgrid}
 \input{tables/k_grid.tex}
 \end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/k_capacity.pdf}
+\caption{Representation capacity and economic concentration. The left panel reports mean out-of-sample Sharpe across ten seeds and the corresponding seed ensemble for each $K_{\max}$. The right panel shows that allocation rank remains small even as nominal factor capacity increases.}
+\label{fig:kcapacity}
+\end{figure}
 
 \section{What Does the Network Discover?}\label{sec:interpretation}
 \subsection{The dominant characteristic factor}
@@ -179,6 +216,13 @@ The leading canonical factor has a clear economic profile, but it is not a stand
 \input{tables/factor_profile.tex}
 \end{table}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/factor_profiles.pdf}
+\caption{Economic profiles of the first two canonical learned factors. Bars report average top-decile minus bottom-decile characteristic ranks in the evaluation sample. The first direction combines quality and cash-flow strength with avoidance of extreme recent winners; the second loads on a distinct size, volatility, and investment configuration.}
+\label{fig:factorprofiles}
+\end{figure}
+
 A useful summary is that the factor rewards stocks with persistent return strength supported by operating quality and fundamental news, while avoiding stocks whose apparent momentum is concentrated in a small number of extreme recent return days. This interpretation is deliberately descriptive: the learned score is a nonlinear function of all characteristics and cannot be reduced to a fixed additive factor recipe.
 
 \subsection{Characteristic interactions}
@@ -188,7 +232,7 @@ The largest interactions involve residual momentum with short-horizon returns, e
 
 \begin{figure}[t]
 \centering
-\IfFileExists{figures/interactions.pdf}{\includegraphics[width=0.82\textwidth]{figures/interactions.pdf}}{\fbox{\parbox[c][2.2in][c]{0.78\textwidth}{\centering Characteristic-interaction figure placeholder}}}
+\includegraphics[width=0.82\textwidth]{figures/interactions.pdf}
 \caption{Largest nonlinear characteristic interactions in the dominant canonical factor.}
 \label{fig:interactions}
 \end{figure}
@@ -196,6 +240,13 @@ The largest interactions involve residual momentum with short-horizon returns, e
 The network separately learns when to hold the characteristic factor. The allocation to the leading factor varies with both aggregate market conditions and the learned cross-sectional state. In the baseline estimates, exposure falls materially when lagged market volatility and cross-sectional return dispersion are high and rises in stronger medium-horizon market states. This behavior is learned without assigning economic signs to the state variables ex ante.
 
 This decomposition provides a finance interpretation of the neural network that a direct stock-level black box does not. The cross-sectional map answers which stocks express a factor; the allocator answers when that factor belongs in the tangency portfolio. The distinction also allows us to test whether the factor itself is stable even when its optimal exposure varies over time.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/state_dependence.pdf}
+\caption{State dependence of canonical factor allocations. Bars are correlations between factor allocations and lagged aggregate or cross-sectional state variables. They are descriptive of the learned conditional policy and are not causal estimates.}
+\label{fig:state}
+\end{figure}
 
 \section{Spanning and Economic Value}\label{sec:spanning}
 \subsection{Does the learned factor survive known models?}
@@ -208,7 +259,22 @@ Table~\ref{tab:spanning} reports alphas relative to Fama--French five factors pl
 \caption{Spanning Regressions for the Dominant Learned Factor}\label{tab:spanning}
 \input{tables/spanning.tex}
 \end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.90\textwidth]{figures/spanning_alpha.pdf}
+\caption{Spanning evidence for the dominant learned factor. The left panel reports annualized evaluation-period alphas; the right panel reports Newey--West $t$-statistics, with 1.96 shown as a reference line.}
+\label{fig:spanningalpha}
+\end{figure}
+
 The same conclusion appears when the known-factor exposures are estimated before the test period and hedged out in the holdout sample. The residual learned factor retains a positive Sharpe ratio across benchmark models. This exercise is stronger than a contemporaneous correlation comparison: it asks whether the historical exposures to known factors can eliminate the subsequent investment value of the learned direction.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.86\textwidth]{figures/residual_equity.pdf}
+\caption{Cumulative performance of the learned factor before and after neutralizing pre-2015 exposures to FF5+MOM and the broad JKP benchmark. Hedge coefficients are estimated before the evaluation sample.}
+\label{fig:residualequity}
+\end{figure}
 
 \subsection{Marginal Sharpe}
 For an asset manager, the relevant question is not whether a factor has a high standalone Sharpe ratio, but whether it improves an existing portfolio. We therefore estimate static tangency weights for each benchmark factor set using the pre-test sample and apply those weights to the holdout period. We then repeat the exercise after adding the learned factor. The change in realized holdout Sharpe is the factor's marginal portfolio value.
@@ -221,6 +287,13 @@ Across the benchmark sets, the learned factor increases the realized Sharpe of t
 \input{tables/marginal_sharpe.tex}
 \end{table}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.84\textwidth]{figures/marginal_sharpe.pdf}
+\caption{Marginal out-of-sample portfolio value. For each benchmark set, bars compare the Sharpe ratio of the pre-2015 estimated tangency portfolio with the Sharpe after adding the learned factor.}
+\label{fig:marginalsharpe}
+\end{figure}
+
 \subsection{Turnover and trading costs}
 High gross Sharpe ratios can be economically irrelevant when they require excessive trading \citep{novymarx2016taxonomy,jensen2026implementable}. We therefore examine the learned portfolio after lagged volatility scaling and proportional transaction costs. Table~\ref{tab:costs} reports turnover, gross exposure, and net performance. At 10 basis points per dollar traded, the annualized Sharpe is \NetSharpeTen.
 \begin{table}[t]
@@ -228,6 +301,13 @@ High gross Sharpe ratios can be economically irrelevant when they require excess
 \caption{Turnover, Volatility Scaling, and Transaction Costs}\label{tab:costs}
 \input{tables/costs.tex}
 \end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.86\textwidth]{figures/equity_costs.pdf}
+\caption{Evaluation-period cumulative wealth after implementation costs. The representative neural portfolio is first scaled using lagged volatility and then charged one-way proportional trading costs of 5, 10, or 25 basis points per dollar traded.}
+\label{fig:costequity}
+\end{figure}
 
 We view this exercise as a diagnostic rather than a claim that the frictionless network is cost optimal. A production strategy would optimally include costs in the training objective, as emphasized by \citet{jensen2026implementable}. Our question is narrower: whether the factor discovered from the frictionless tangency objective represents a sufficiently persistent source of return to remain economically relevant after ordinary trading frictions.
 
@@ -237,35 +317,63 @@ Neural networks introduce optimization randomness, so a finance result should no
 
 The $K$-grid separates approximation capacity from economic usage. If larger $K_{\max}$ only adds redundant coordinates, validation and evaluation performance should flatten. If it lets the network synthesize better nonlinear characteristic combinations, performance can continue to improve even when the effective policy and allocation ranks remain far below $K_{\max}$. The latter pattern is particularly informative: a high-capacity representation can be valuable without implying a high-dimensional implemented portfolio.
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.78\textwidth]{figures/seed_dispersion.pdf}
+\caption{Distribution of out-of-sample Sharpe ratios across ten random initializations at each factor capacity. The figure reports the full seed distribution rather than a best-seed backtest.}
+\label{fig:seeds}
+\end{figure}
+
 \subsection{Ablations}
-We estimate five economically targeted ablations. The first removes aggregate market state $M_t$ but retains the learned cross-sectional state. The second removes cross-sectional context while retaining aggregate state. The third uses a static allocator. The fourth makes the characteristic map linear while keeping the same conditional allocator, isolating the value of nonlinear feature learning. Finally, we estimate a direct conditional neural policy in which the stock score may depend jointly on firm characteristics, cross-sectional context, and aggregate state. The last comparison measures the performance cost, if any, of insisting on an interpretable separable factor bottleneck.
+We estimate five economically targeted ablations. Removing aggregate market state $M_t$ lowers mean evaluation Sharpe from 1.83 to 1.53, and forcing a static factor allocation lowers it further to 1.46. Thus conditional factor timing is economically important. By contrast, removing the learned cross-sectional pooling block does not reduce performance: its mean Sharpe is 1.86. The cross-sectional attention mechanism is therefore not the source of the main result and can be viewed as an optional enrichment rather than a necessary ingredient. Making the characteristic map linear lowers mean Sharpe to 1.71, while a direct conditional neural stock policy without the factor bottleneck also delivers 1.71. The combination of nonlinear characteristic construction and a transparent conditional factor representation is therefore competitive with the less interpretable direct alternative.
 \begin{table}[t]
 \centering
 \caption{Ablation Tests}\label{tab:ablations}
 \input{tables/ablations.tex}
 \end{table}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.84\textwidth]{figures/ablations.pdf}
+\caption{Economic ablations. Bars report mean 2015--2024 Sharpe across five random initializations; error bars are one cross-seed standard deviation. The sharpest deterioration comes from removing aggregate state or making factor allocation static.}
+\label{fig:ablations}
+\end{figure}
+
 \subsection{Expanding-window portfolio choice}
 The fixed holdout protects against direct test-set tuning but still estimates one model before 2015. We therefore run a stricter annual walk-forward exercise. For each test year, the model uses an expanding history ending before the validation window, selects training progress using only the immediately preceding years, and then holds the resulting portfolio rule fixed throughout the next year. The procedure is repeated through 2024.
 
-The walk-forward protocol and code are included in the replication package. The final concatenated return series is intentionally left unreported in this snapshot because the expanding-window run is still executing. Figure~\ref{fig:walkforward} is populated only after that run completes. The walk-forward exercise is economically important because it exposes the model to changes in the cross-sectional composition of the market, characteristic distributions, and aggregate states without allowing future information to influence training.
+We repeat the full recursive exercise for five random initializations and average their monthly portfolio returns without using evaluation data to select a seed. The resulting walk-forward ensemble attains an annualized Sharpe ratio of \WalkForwardSharpe\ over 2015--2024; a 12-month circular-block bootstrap gives a 95\% interval of $[1.57,2.97]$. Individual recursive Sharpe ratios range from 1.24 to 2.23, with a mean of 1.97. A recursive linear-characteristic benchmark, re-estimated on the same expanding information set with its ridge penalty fixed before 2015, reaches Sharpe \WalkForwardLinearSharpe. The neural-minus-linear difference is \WalkForwardDelta\ Sharpe points; a paired 12-month block bootstrap gives $[-0.22,1.39]$, with 92\% of bootstrap draws positive. We therefore view the recursive improvement as economically substantial but not yet statistically decisive. The neural ensemble Sharpe is positive in every payoff year, including 2020. Figure~\ref{fig:walkforward} compares recursive neural and linear policies, together with the fixed-split neural ensemble. The exercise exposes the model to changing market composition, characteristic distributions, and aggregate states while ensuring that each year's payoff is generated by a rule estimated using only information available beforehand.
 
 \begin{figure}[t]
 \centering
-\IfFileExists{figures/walk_forward.pdf}{\includegraphics[width=0.82\textwidth]{figures/walk_forward.pdf}}{\fbox{\parbox[c][2.2in][c]{0.78\textwidth}{\centering Walk-forward performance placeholder}}}
-\caption{Expanding-window walk-forward performance. Each year's portfolio is estimated without using that year's returns.}
+\includegraphics[width=0.90\textwidth]{figures/walk_forward.pdf}
+\caption{Expanding-window walk-forward performance. Left: cumulative performance of the five-seed recursive neural ensemble, the fixed-split neural ensemble, and the recursively re-estimated linear-characteristic benchmark, each rescaled ex post to 10\% annualized volatility. Right: annualized Sharpe by payoff year for recursive neural and linear policies; vertical ranges span the five neural seeds. Every test-year portfolio is estimated before that payoff year begins.}
 \label{fig:walkforward}
 \end{figure}
 
 \subsection{Stability of factor interactions and economic dimension}
-We finally ask whether the dominant nonlinear factor is a stable economic object or a feature of one subperiod. We measure $K_{\mathrm{eff}}$ separately in early training, late training, validation, and test samples. We also hold a common set of leading characteristics fixed and re-estimate the pairwise interaction diagnostics within each subperiod.
-If the learned factor is stable, the rankings of interaction strengths should be positively associated across subperiods and the effective dimension should remain small even as the nominal network capacity is unchanged. Table~\ref{tab:stability} reports entropy rank, the share of the first canonical direction, Spearman rank correlations of interaction scores, and overlap among the strongest interactions.
+We finally ask whether the dominant nonlinear factor is a stable economic object or a feature of one subperiod. We measure the canonical allocation rank separately in early training, late training, validation, and test samples. We also hold a common set of leading characteristics fixed and re-estimate pairwise interaction diagnostics within each subperiod.
+The allocation remains concentrated throughout the sample. Interaction rankings are moderately related between the earliest training subsample and later periods, and become highly stable once the model reaches the late-training, validation, and evaluation eras. Table~\ref{tab:stability} reports allocation rank, the share of the first canonical direction, pairwise Spearman rank correlations, and overlap among the strongest interactions.
 
 \begin{table}[t]
 \centering
 \caption{Stability of Economic Dimension and Characteristic Interactions}\label{tab:stability}
 \input{tables/stability.tex}
 \end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.76\textwidth]{figures/dimension_by_period.pdf}
+\caption{Concentration of the canonical allocation across subperiods. The learned strategy remains low-dimensional even though the market environment and cross-sectional composition change materially over six decades.}
+\label{fig:dimensionperiod}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.66\textwidth]{figures/interaction_stability.pdf}
+\caption{Stability of nonlinear interaction rankings across subperiods. Entries are Spearman rank correlations computed using a characteristic set fixed from training data.}
+\label{fig:interactionstability}
+\end{figure}
 
 \section{Conclusion}\label{sec:conclusion}
 The characteristic zoo is high-dimensional in observables, but portfolio choice need not be. This paper gives a neural network enough flexibility to combine a large characteristic set nonlinearly while forcing the final portfolio to operate through a transparent factor bottleneck. The resulting factors are not chosen by univariate sorts or by reconstruction of the return panel. They are chosen because they matter for the conditional tangency portfolio.
@@ -274,7 +382,7 @@ The main empirical message is a separation between statistical complexity and ec
 
 For asset pricing, this finding suggests a different interpretation of the factor zoo. Many published characteristics may be useful not because each represents a separate factor, but because they provide ingredients for a smaller number of nonlinear characteristic combinations. For asset management, the same result suggests that feature learning can be used as factor discovery: the output of the network can be analyzed as a set of traded economic directions rather than as a black-box expected-return forecast.
 
-Several extensions are natural. Transaction costs can be integrated directly into the learning objective, the factor map can be estimated jointly across countries, and the economic allocation spectrum can be studied across asset classes. The central object, however, remains the same: the dimension and composition of the characteristic information that actually survives into the investor's portfolio.
+Several extensions are natural. Transaction costs can be integrated directly into the learning objective, the factor map can be estimated jointly across countries, and the policy spectrum can be studied across asset classes. The central object, however, remains the same: the dimension and composition of the characteristic information that actually survives into the investor's portfolio.
 
 \appendix
 \section{Additional Details}
@@ -297,6 +405,44 @@ where $G_1$ is the leading canonical learned factor scaled to 10\% annual volati
 
 \subsection{Turnover}
 Let $w_t$ denote the volatility-scaled target positions at month end. Previous holdings are allowed to drift with realized individual-stock returns before rebalancing. Dollar notional traded is the $\ell_1$ distance between current target positions and previous post-return holdings. A cost of $c$ basis points subtracts $c/10{,}000$ times dollar notional traded from the monthly portfolio return.
+
+\section{Additional Empirical Figures}
+The following figures document the time-series path, implementation burden, and factor decomposition behind the main results. They are included to make clear where the reported Sharpe ratios come from and whether the findings are concentrated in particular years or particular components of the learned strategy.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.90\textwidth]{figures/annual_returns.pdf}
+\caption{Calendar-year evaluation-period returns at a common 10\% annualized volatility.}
+\label{fig:annualreturns}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.84\textwidth]{figures/return_distribution.pdf}
+\caption{Distribution of monthly evaluation-period returns for the neural ensemble, linear-characteristic benchmark, and broad JKP tangency portfolio, each rescaled ex post to common volatility.}
+\label{fig:returndist}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.88\textwidth]{figures/factor_equity.pdf}
+\caption{Cumulative wealth of the leading canonical learned factors, each rescaled ex post to 10\% annualized volatility for visual comparison.}
+\label{fig:factorequity}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.88\textwidth]{figures/turnover_exposure.pdf}
+\caption{Turnover and exposure of the representative learned portfolio through the evaluation sample.}
+\label{fig:turnoverexposure}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.82\textwidth]{figures/cost_sensitivity.pdf}
+\caption{Sharpe ratio under alternative transaction-cost and short-borrow assumptions.}
+\label{fig:costsensitivity}
+\end{figure}
 
 \bibliographystyle{apalike}
 \bibliography{references}

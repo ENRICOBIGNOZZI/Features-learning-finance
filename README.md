@@ -1,84 +1,31 @@
-# Neural Factor Discovery for Asset Pricing
+# The Investment Dimension of the Characteristic Zoo
 
-This repository studies a finance-first question: can a neural network discover the nonlinear characteristic factors that matter for the conditional tangency portfolio?
+This repository contains the code and empirical replication files for a neural-factor approach to conditional portfolio choice. The economic question is not whether a neural network can forecast individual stock returns, but how much of a large characteristic set survives into the tangency portfolio once nonlinear feature learning is allowed.
 
-The model is one end-to-end neural network. It is not trained to forecast every stock return and it does not impose a hand-built factor definition.
+For stock $i$ at formation month $t$, a neural map produces $K$ characteristic scores $\phi_k(z_{i,t})$. They define traded managed portfolios,
 
-For stock $i$ at month $t$, let $z_{i,t}$ denote the vector of firm characteristics. The network learns $K$ nonlinear characteristic maps
+$$F_{k,t+1}=\frac{1}{N_t}\sum_i \widetilde\phi_{k,t}(z_{i,t})R^e_{i,t+1},$$
 
-$$
-\phi_k(z_{i,t}), \qquad k=1,\ldots,K,
-$$
+and a conditional allocator uses lagged market state and an optional permutation-invariant cross-sectional summary to choose $b_t$. The final payoff is
 
-and the corresponding managed factor returns
+$$R^p_{t+1}=b_t'F_{t+1},\qquad w_{i,t}=N_t^{-1}\widetilde\phi_t(z_{i,t})'b_t.$$
 
-$$
-F_{k,t+1}=\frac{1}{N_t}\sum_{i=1}^{N_t}\phi_k(z_{i,t})R^e_{i,t+1}.
-$$
+No long-short, market-neutrality, or gross-exposure restriction is imposed in the baseline training problem. Score RMS normalization fixes scale only. Training maximizes a block analogue of the tangency criterion $E[R^p]/\sqrt{E[(R^p)^2]}$, which is monotone in Sharpe for positive-mean payoffs.
 
-A second part of the same network observes lagged market state $M_t$ and a permutation-invariant summary $C_t$ of the current stock cross-section, and produces factor allocations $b_t$.
+## Causal empirical design
 
-The final portfolio is
+The admissible data cache is `data/JKP_USA_causal`. JKP rows dated $t$ contain a next-month payoff, so train/validation/evaluation splits are defined in payoff time. The main formation windows are 1963-01--2004-11, 2004-12--2014-11, and 2014-12--2024-11. Future return availability never determines formation-universe membership. Characteristic coverage is screened using training data only, leaving 123 JKP characteristics plus a cross-sectional size rank, for 124 network inputs.
 
-$$
-R^p_{t+1}=b_t'F_{t+1},
-$$
+## Current paper evidence
 
-or, equivalently,
+The final fixed-split $K_{max}\times$ seed battery contains 60 models: $K_{max}\in\{1,2,4,8,16,32\}$ and ten seeds at each capacity. Mean 2015--2024 Sharpe rises from 1.43 at $K=1$ to 1.79 at $K=32$; the ten-seed $K=32$ ensemble reaches 1.90, versus 1.51 for the linear managed-portfolio benchmark. The representative $K=32$ run is chosen from validation performance only and has test Sharpe 1.68.
 
-$$
-w_{i,t}=\frac{1}{N_t}\sum_{k=1}^K b_{k,t}\phi_k(z_{i,t}).
-$$
+The representative policy is highly concentrated. Its rotation-invariant policy entropy rank is 1.11 and the first policy direction contains 98.0% of spectrum mass. Two canonical traded directions reproduce the full test payoff with correlation 0.997 and relative payoff MSE 0.53%.
 
-This gives a low-rank nonlinear characteristic-by-state representation of portfolio weights. Firm-level nonlinearities create interactions among characteristics; the JKP characteristics are monthly cross-sectional ranks, so the inputs are already relative to the contemporaneous stock universe. Aggregate cross-sectional and market conditions price the learned characteristic factors dynamically through $b_t$.
+The leading factor has positive spanning alphas against FF5+MOM, q5, QMJ, JKP mispricing, and a broad JKP-core specification. At 10 bps per dollar traded, the representative volatility-targeted portfolio retains Sharpe 1.46. A five-seed annual expanding-window ensemble reaches Sharpe 2.21 over 2015--2024 versus 1.57 for a recursively re-estimated linear characteristic benchmark; its own 12-month circular-block bootstrap interval is [1.57, 2.97]. See `RESULTS.md` and the paper for the full interpretation and qualifications.
 
-## Economic objective
+## Reproduction
 
-Training minimizes
+Install with `python3 -m pip install -e .`. Core scripts are `robustness_grid.py` for the $K\times$seed battery, `summarize_seed_ensembles.py` for ensembles, `run_ablations.py` for architecture tests, `walk_forward.py` for recursive estimation, `analyze_spanning.py` for factor spanning and marginal Sharpe, `analyze_investability.py` for turnover/costs, `analyze_factors.py` and `analyze_stability.py` for economic interpretation, and `make_finance_figures.py` for the paper figure suite.
 
-$$
-\frac{1}{T}\sum_t (1-R^p_{t+1})^2,
-$$
-
-which selects the tangency-portfolio direction without optimizing a noisy sample Sharpe ratio directly.
-
-No market-neutrality, long/short, gross-exposure, or leverage constraint is imposed in the baseline. Consequently raw return scale is not an investability claim. Sharpe is scale invariant; portfolio plots should be rescaled ex post to a common target volatility when comparing strategies.
-
-## Factor identification
-
-The latent factor coordinates are not economically identified: any invertible rotation can represent the same portfolio. We therefore do not interpret neural units directly.
-
-After training, the code whitens the learned factor-return space and diagonalizes an economic allocation operator. This produces an invariant ordered basis of canonical factor directions and an endogenous effective factor dimension $K_{eff}$.
-
-Thus $K$ is maximum model capacity. The economically active number of factors is an empirical output.
-
-## Data
-
-The implementation uses the cleaned U.S. JKP stock-level panel already available locally. The current cache contains 132 characteristics and annual files from 1963 through 2024. Data are not committed to GitHub.
-
-## Reproduce the pilot
-
-```bash
-python3 -m pip install -e .
-python3 run_experiment.py \
-  --data-dir /Users/enrico/Desktop/PHD/portfolio/paper_codice/data/JKP_USA_clean \
-  --output-dir results/pilot_k4 \
-  --preset pilot --variant full --hidden 32 --factors 4 \
-  --context-heads 2 --epochs 20 --device mps
-```
-
-The pilot split is 2000--2014 train, 2015--2019 validation, and 2020--2024 test. The paper preset uses 1963--2004, 2005--2014, and 2015--2024.
-
-Interpret the learned canonical factors with
-
-```bash
-python3 analyze_factors.py \
-  --data-dir /Users/enrico/Desktop/PHD/portfolio/paper_codice/data/JKP_USA_clean \
-  --result-dir results/pilot_k4 --start 2020-01-01 --end 2024-12-31
-```
-
-The interpretation output includes characteristic sensitivities, nonlinear pairwise interactions, top-minus-bottom characteristic profiles, and factor-allocation links to lagged market state.
-
-## Research status
-
-The checked-in code is a first falsifiable prototype. The pilot numbers are pre-cost, single-seed diagnostics. A finance result requires multiple seeds, walk-forward retraining, turnover and transaction costs, capacity, spanning against standard factors, and stability across subperiods.
+Data and large model checkpoints are intentionally excluded from Git. `snapshot_results/` contains the small result files needed to audit the paper tables and figures. Earlier folders described in Git history or local `results/` directories are not admissible unless they use the causal cache and payoff-time split documented in `AUDIT.md`.

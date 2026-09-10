@@ -1,0 +1,108 @@
+\subsection{Policy dimension}
+The latent factor labels are not identified.  If the raw characteristic map is
+$\phi(z)\in\mathbb R^K$, any nonsingular change of coordinates can be offset by
+an inverse change in the state coefficients without changing stock weights.
+We therefore define dimension from the portfolio rule itself rather than from
+neural units.
+
+Let $D_t$ be the diagonal matrix of cross-sectional root-mean-square scores in
+\eqref{eq:score_normalization}.  Because $\widetilde\phi_t=D_t^{-1}\phi$, the
+stock-weight rule can be written
+\begin{equation}
+N_t w_{i,t}=\phi(z_{i,t})'c_t,\qquad c_t=D_t^{-1}b_t.
+\label{eq:separable_policy}
+\end{equation}
+Thus the normalization used for numerical identification does not alter the
+separable structure: it merely moves a time-varying scale from the
+characteristic map into the state coefficient.
+Define the empirical characteristic and state Gram matrices
+\begin{equation}
+G_\phi=\mathbb E_t\!\left[\frac{1}{N_t}\sum_{i=1}^{N_t}
+\phi(z_{i,t})\phi(z_{i,t})'\right],
+\qquad
+G_c=\mathbb E_t[c_tc_t'].
+\label{eq:policy_grams}
+\end{equation}
+The nonzero eigenvalues of
+\begin{equation}
+\mathcal P=G_\phi^{1/2}G_cG_\phi^{1/2}
+\label{eq:policy_operator}
+\end{equation}
+are the squared singular values of the learned separable portfolio rule under
+the empirical product reference measure.  Write them as
+$\lambda_1\geq\cdots\geq\lambda_K\geq0$ and call them the \emph{policy
+spectrum}.  The spectrum measures how many characteristic-by-state directions
+are needed to represent the learned stock-weight function; it does not count
+equilibrium risk factors in the market.
+\begin{proposition}[Invariance of the policy spectrum]
+The eigenvalues $\{\lambda_j\}_{j=1}^K$ are unchanged by any nonsingular
+reparameterization $\widetilde\phi=A\phi$ and
+$\widetilde c=A^{-\prime}c$.
+\end{proposition}
+\begin{proof}
+The transformed Gram matrices are
+$\widetilde G_\phi=AG_\phi A'$ and
+$\widetilde G_c=A^{-\prime}G_cA^{-1}$.
+The eigenvalues of \eqref{eq:policy_operator} equal the nonzero eigenvalues of
+$G_\phi G_c$.  Under the transformation,
+\[
+\widetilde G_\phi\widetilde G_c
+=A(G_\phi G_c)A^{-1},
+\]
+which is similar to $G_\phi G_c$ and therefore has the same spectrum.
+\end{proof}
+
+Normalize $q_j=\lambda_j/\sum_{\ell}\lambda_\ell$.  Our primary measure of
+policy dimension is the entropy rank
+\begin{equation}
+K_{\rm policy}=\exp\!\left(-\sum_jq_j\log q_j\right),
+\label{eq:policy_rank}
+\end{equation}
+with the participation ratio reported as a robustness measure.
+This object also has a direct approximation interpretation.  By the Schmidt
+expansion, the squared $L^2$ error of the best rank-$r$ separable
+approximation to the learned policy is proportional to
+$\sum_{j>r}\lambda_j$.  Hence a concentrated policy spectrum means that a
+rich neural network uses its flexibility to discover nonlinear functions
+inside a low-rank characteristic-state policy, not that the underlying return
+panel itself must have low rank.
+
+\subsection{Canonical traded factors}
+Policy rank and traded-factor interpretation are related but distinct.  For
+economic interpretation we work with the returns of the $K$ learned managed
+portfolios in \eqref{eq:learned_factor}.  Let
+\begin{equation}
+S=\mathbb E[F_{t+1}F_{t+1}'],\qquad
+g_{t+1}=S^{-1/2}F_{t+1},\qquad d_t=S^{1/2}b_t.
+\label{eq:risk_standardization}
+\end{equation}
+Then $R^p_{t+1}=d_t'g_{t+1}$ and $\mathbb E[g_{t+1}g_{t+1}']=I$.
+We diagonalize
+\begin{equation}
+H=\mathbb E[d_td_t']
+\label{eq:economic_operator}
+\end{equation}
+and rotate $(g_{t+1},d_t)$ by the corresponding orthogonal eigenvectors.
+The resulting canonical traded factors are ordered by risk-standardized
+allocation intensity rather than by arbitrary hidden-unit labels.
+The eigenvalues of $H$ are invariant to nonsingular rotations of the latent
+factor coordinates by the same whitening argument.  We refer to their
+entropy rank as the \emph{allocation rank}.  It measures concentration of the
+estimated strategy across risk-standardized traded directions; unlike
+$K_{\rm policy}$, it is not our definition of functional policy dimension.
+In particular, a static allocator mechanically collapses the implemented
+portfolio to one characteristic score even if the latent factor return space
+has many dimensions.
+
+The economically decisive diagnostic is therefore out-of-sample truncation.
+Denote the $j$th canonical factor by $G_{j,t+1}$ and its allocation by
+$D_{j,t}$. Define
+\begin{equation}
+R^{p,(r)}_{t+1}=\sum_{j=1}^{r}D_{j,t}G_{j,t+1}.
+\label{eq:truncated_portfolio}
+\end{equation}
+We report the Sharpe ratio of $R^{p,(r)}$, its correlation with the full
+portfolio, and the relative payoff mean-squared error as $r$ increases.  If a
+small number of directions reproduces the full strategy out of sample, low
+economic dimension is a statement about portfolio value rather than a visual
+feature of an eigenvalue plot.

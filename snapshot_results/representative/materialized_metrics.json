@@ -1,0 +1,37 @@
+{
+  "train": {
+    "loss": 0.7034369858352779,
+    "sharpe": 3.3734053999161904,
+    "mean_monthly": 0.1824366000715169,
+    "vol_monthly": 0.18734152763960218,
+    "months": 503,
+    "mean_missing_return_share": 0.002698839336676733,
+    "max_missing_return_share": 0.012383900928792602
+  },
+  "val": {
+    "loss": 0.814810423875791,
+    "sharpe": 2.515875350730907,
+    "mean_monthly": 0.1100279187085107,
+    "vol_monthly": 0.15149712834448145,
+    "months": 120,
+    "mean_missing_return_share": 0.005043195834688926,
+    "max_missing_return_share": 0.00843170320404718
+  },
+  "test": {
+    "loss": 0.8511702744040364,
+    "sharpe": 1.6843657911379755,
+    "mean_monthly": 0.10080900040144722,
+    "vol_monthly": 0.2073258807251981,
+    "months": 120,
+    "mean_missing_return_share": 0.005525839302270028,
+    "max_missing_return_share": 0.00904109589041091
+  },
+  "allocation_dimension": {
+    "entropy_rank": 1.3205699381374114,
+    "participation_ratio": 1.1592115630054785
+  },
+  "policy_dimension": {
+    "entropy_rank": 1.114529700506488,
+    "participation_ratio": 1.0404908210928874
+  }
+}

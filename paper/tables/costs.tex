@@ -1,13 +1,15 @@
 \begin{threeparttable}
-\begin{tabular}{lrrrr}
+\begin{tabular}{lrrr}
 \toprule
-Specification & Ann. Mean & Ann. Vol & Sharpe & Avg. Turnover \\
+Specification & Ann. Mean & Ann. Vol & Sharpe \\
 \midrule
-Gross, 10\% vol target & -- & -- & -- & -- \\
-5 bps & -- & -- & -- & -- \\
-10 bps & -- & -- & -- & -- \\
-25 bps & -- & -- & -- & -- \\
+Gross, 10\% vol target & 18.7\% & 11.5\% & 1.63 \\
+5 bps & 17.8\% & 11.5\% & 1.55 \\
+10 bps & 16.8\% & 11.5\% & 1.46 \\
+25 bps & 13.8\% & 11.5\% & 1.20 \\
+10 bps + 100 bps borrow & 15.5\% & 11.5\% & 1.35 \\
+10 bps + 300 bps borrow & 12.9\% & 11.5\% & 1.12 \\
 \bottomrule
 \end{tabular}
-\begin{tablenotes}\footnotesize\item Volatility scaling uses lagged realized volatility and is not part of network training. Trading costs are proportional to dollar notional traded.\end{tablenotes}
+\begin{tablenotes}\footnotesize\item Volatility scaling uses lagged 36-month realized volatility and is not part of training. Average half-$L^1$ monthly turnover is 0.82 and average gross exposure is 2.81 in this representative run.\end{tablenotes}
 \end{threeparttable}

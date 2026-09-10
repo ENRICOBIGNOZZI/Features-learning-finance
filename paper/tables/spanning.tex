@@ -3,12 +3,12 @@
 \toprule
 Benchmark & Ann. Alpha & NW $t$ & $R^2$ & Hedged SR \\
 \midrule
-FF5 + MOM & -- & -- & -- & -- \\
-$q^5$ & -- & -- & -- & -- \\
-QMJ & -- & -- & -- & -- \\
-Mispricing & -- & -- & -- & -- \\
-JKP core & -- & -- & -- & -- \\
+FF5 + MOM & 8.6\% & 4.97 & 0.75 & 1.48 \\
+$q^5$ & 8.4\% & 3.32 & 0.56 & 1.07 \\
+QMJ & 7.0\% & 2.15 & 0.56 & 1.31 \\
+Mispricing-JKP & 4.9\% & 2.43 & 0.67 & 1.12 \\
+JKP core & 5.7\% & 3.54 & 0.80 & 1.39 \\
 \bottomrule
 \end{tabular}
-\begin{tablenotes}\footnotesize\item The learned factor is scaled to 10\% annual volatility using only pre-test data. Newey--West standard errors use six lags.\end{tablenotes}
+\begin{tablenotes}\footnotesize\item The learned factor is scaled to 10\% annual volatility using only pre-test data. Newey--West standard errors use six lags. Hedge coefficients are estimated before 2015 and applied in the evaluation period.\end{tablenotes}
 \end{threeparttable}

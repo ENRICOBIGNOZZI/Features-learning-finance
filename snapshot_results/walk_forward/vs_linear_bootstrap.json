@@ -1,0 +1,8 @@
+{
+  "estimate": 0.6366157146843736,
+  "ci_low": -0.22442345137278893,
+  "ci_high": 1.3946158095065284,
+  "probability_positive": 0.91925,
+  "block_length": 12,
+  "replications": 20000
+}

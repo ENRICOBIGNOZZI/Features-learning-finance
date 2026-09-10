@@ -59,3 +59,11 @@ current stock-count state was based on the number of available next-month
 returns. The effect was numerically tiny because unresolved returns affect well
 below one percent of the cross-section, but those results are not admissible as
 final paper evidence. The final battery is rerun after this correction.
+
+## Final admissible result directories
+
+The paper snapshot uses `results/causal_v2_k_grid_paper` for the 60-run capacity battery, `results/causal_v2_k_grid_paper/k32_seed04` for representative factor interpretation and implementability diagnostics, `results/causal_v2_ablations_paper` for five-seed architecture ablations, `results/causal_v2_linear_managed` for the linear benchmark, and `results/causal_v2_walkforward_seed00` through `seed04` for recursive estimation. `results/causal_v2_walkforward_ensemble5` contains the deterministic equal-weighted recursive ensemble summary.
+
+The representative run is chosen exclusively from the validation Sharpe distribution: seed 04 is one of the two observations bracketing the median validation Sharpe, with the lower seed index used as a deterministic tie-break. Factor profiles, spanning tests, and cost diagnostics therefore do not select a favorable evaluation-period seed.
+
+All equity-line comparisons in the paper use realized 2015--2024 payoffs. When curves are placed on a common risk scale for visualization, volatility matching is performed ex post and is explicitly labeled; it does not alter the reported Sharpe ratios or feed back into model selection.
