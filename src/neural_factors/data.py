@@ -21,6 +21,7 @@ class MonthPanel:
     ids: np.ndarray
     me: np.ndarray
     state: np.ndarray
+    return_observed: np.ndarray
 
 
 class JKPUSData:
@@ -32,6 +33,7 @@ class JKPUSData:
         self.files = self._find_files()
         self.characteristics = self._characteristics()
         self.monthly_state = self._build_monthly_state()
+        self._panel_cache: dict[tuple[str, str], list[MonthPanel]] = {}
 
     def _find_files(self) -> dict[int, Path]:
         files = {}
@@ -69,15 +71,18 @@ class JKPUSData:
         for year, path in self.files.items():
             frame = pd.read_parquet(path, columns=columns)
             frame["eom"] = pd.to_datetime(frame["eom"])
-            frame = frame.dropna(subset=["ret_exc_lead1m"])
-            frame["mr"] = frame["me"] * frame["ret_exc_lead1m"]
+            # Keep the investable universe defined at formation time. Missing
+            # next-month returns are an outcome-data issue and must not decide
+            # which stocks existed in today's cross-section.
+            frame["ret_filled"] = frame["ret_exc_lead1m"].fillna(0.0)
+            frame["mr"] = frame["me"] * frame["ret_filled"]
             grouped = frame.groupby("eom", sort=True)
             stats = grouped.agg(
-                ew_fwd=("ret_exc_lead1m", "mean"),
-                xs_disp_fwd=("ret_exc_lead1m", "std"),
+                ew_fwd=("ret_filled", "mean"),
+                xs_disp_fwd=("ret_filled", "std"),
                 me_sum=("me", "sum"),
                 mr_sum=("mr", "sum"),
-                n_stocks=("ret_exc_lead1m", "size"),
+                n_stocks=("ret_filled", "size"),
             )
             stats["year"] = year
             pieces.append(stats)
@@ -126,7 +131,8 @@ class JKPUSData:
         columns = ["id", "eom", "me", "ret_exc_lead1m", *base_chars]
         frame = pd.read_parquet(self.files[year], columns=columns)
         frame["eom"] = pd.to_datetime(frame["eom"])
-        frame = frame.dropna(subset=["ret_exc_lead1m"]).copy()
+        # Do not condition today's universe on availability of tomorrow's return.
+        frame = frame.copy()
         if self.add_log_me:
             log_me = np.log(frame["me"].astype(float).clip(lower=1e-12))
             ranks = log_me.groupby(frame["eom"]).rank(method="average", pct=True)
@@ -146,11 +152,42 @@ class JKPUSData:
         for date, month in frame.groupby("eom", sort=True):
             x = month[self.characteristics].to_numpy(dtype=np.float32, copy=True)
             x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
+            raw_r = month["ret_exc_lead1m"].to_numpy(dtype=np.float32)
+            observed = np.isfinite(raw_r)
+            # Missing payoff observations are assigned zero in the baseline. This
+            # is conservative and, unlike dropping them, does not use future
+            # availability to alter formation-time weights. Sensitivity to this
+            # convention is reported separately.
+            r = np.nan_to_num(raw_r, nan=0.0, posinf=0.0, neginf=0.0)
             yield MonthPanel(
                 date=pd.Timestamp(date),
                 x=x,
-                r=month["ret_exc_lead1m"].to_numpy(dtype=np.float32),
+                r=r,
                 ids=month["id"].to_numpy(copy=True),
                 me=month["me"].to_numpy(dtype=np.float32, copy=True),
                 state=self._state_for(pd.Timestamp(date), scaler),
+                return_observed=observed,
             )
+
+    def materialize(
+        self,
+        start: str,
+        end: str,
+        scaler: tuple[np.ndarray, np.ndarray],
+        *,
+        cache: bool = True,
+    ) -> list[MonthPanel]:
+        """Materialize a date range once; characteristics are stored as float16."""
+        mean, std = scaler
+        scaler_key = tuple(np.round(np.r_[mean, std], 6).tolist())
+        key = (str(pd.Timestamp(start).date()), str(pd.Timestamp(end).date()), scaler_key)
+        if cache and key in self._panel_cache:
+            return self._panel_cache[key]
+        panels: list[MonthPanel] = []
+        for year in self.years(start, end):
+            for panel in self.iter_year(year, start, end, scaler):
+                panel.x = panel.x.astype(np.float16, copy=False)
+                panels.append(panel)
+        if cache:
+            self._panel_cache[key] = panels
+        return panels

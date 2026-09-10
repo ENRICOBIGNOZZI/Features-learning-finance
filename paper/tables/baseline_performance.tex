@@ -1,0 +1,15 @@
+\begin{threeparttable}
+\begin{tabular}{lcc}
+\toprule
+Specification & Validation SR & Test SR \\
+\midrule
+Representative neural model, $K_{\max}=32$ & 2.31 & 1.44 \\
+10-seed mean, $K_{\max}=32$ & 2.45 & 1.38 \\
+10-seed ensemble & -- & 1.49 \\
+Linear managed-portfolio baseline & 2.34 & 1.53 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item Training: 1963--2004; validation: 2005--2014; test: 2015--2024. The representative seed is selected by validation performance, not test performance. Walk-forward estimation is implemented but still running in this snapshot.
+\end{tablenotes}
+\end{threeparttable}

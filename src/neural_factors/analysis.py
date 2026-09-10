@@ -67,7 +67,11 @@ def apply_canonical_basis(frame: pd.DataFrame, basis: CanonicalBasis) -> pd.Data
     g = f @ basis.inv_sqrt_second_moment @ basis.eigenvectors
     d = b @ basis.sqrt_second_moment @ basis.eigenvectors
 
-    out = frame[["date", "portfolio_return"]].copy()
+    base_columns = ["date"]
+    if "payoff_date" in frame.columns:
+        base_columns.append("payoff_date")
+    base_columns.append("portfolio_return")
+    out = frame[base_columns].copy()
     for j in range(g.shape[1]):
         out[f"canonical_factor_{j:02d}"] = g[:, j]
         out[f"canonical_allocator_{j:02d}"] = d[:, j]
@@ -133,6 +137,12 @@ def save_canonical_analysis(
         summarize_canonical(canonical).to_csv(
             output_dir / f"canonical_{name}_summary.csv", index=False
         )
+        curve = truncation_curve(canonical)
+        curve.to_csv(output_dir / f"canonical_{name}_truncation.csv", index=False)
+        with (output_dir / f"canonical_{name}_truncation_dimension.json").open(
+            "w", encoding="utf-8"
+        ) as stream:
+            json.dump(truncation_dimension(curve), stream, indent=2)
     np.savez(
         output_dir / "canonical_basis.npz",
         inv_sqrt_second_moment=basis.inv_sqrt_second_moment,
@@ -141,3 +151,44 @@ def save_canonical_analysis(
         economic_eigenvalues=basis.economic_eigenvalues,
     )
     return basis
+
+
+def allocation_dimension(values: np.ndarray) -> dict[str, float]:
+    """Effective rank of risk-standardized factor allocation intensity."""
+    return economic_dimension(values)
+
+
+def truncation_curve(canonical: pd.DataFrame) -> pd.DataFrame:
+    """Performance retained by the first j canonical policy directions."""
+    contribution_columns = sorted(
+        c for c in canonical.columns if c.startswith("contribution_")
+    )
+    full = canonical["portfolio_return"].to_numpy(dtype=float)
+    rows = []
+    running = np.zeros(len(canonical), dtype=float)
+    full_var = max(float(np.mean(full * full)), 1e-12)
+    for j, column in enumerate(contribution_columns, start=1):
+        running = running + canonical[column].to_numpy(dtype=float)
+        residual = full - running
+        corr = np.corrcoef(running, full)[0, 1] if np.std(running) > 0 else np.nan
+        rows.append({
+            "rank": j,
+            "sharpe": annualized_sharpe(running),
+            "correlation_with_full": float(corr),
+            "relative_payoff_mse": float(np.mean(residual * residual) / full_var),
+            "rms_payoff_share": float(np.sqrt(np.mean(running * running) / full_var)),
+        })
+    return pd.DataFrame(rows)
+
+
+def truncation_dimension(curve: pd.DataFrame) -> dict[str, int]:
+    """Smallest canonical rank meeting transparent reconstruction targets."""
+    def first_rank(mask):
+        block = curve.loc[mask, "rank"]
+        return int(block.iloc[0]) if len(block) else int(curve["rank"].max())
+    return {
+        "rank_corr_95": first_rank(curve["correlation_with_full"] >= 0.95),
+        "rank_corr_99": first_rank(curve["correlation_with_full"] >= 0.99),
+        "rank_mse_05": first_rank(curve["relative_payoff_mse"] <= 0.05),
+        "rank_mse_01": first_rank(curve["relative_payoff_mse"] <= 0.01),
+    }

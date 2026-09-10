@@ -25,6 +25,8 @@ def load_model(result_dir: str | Path, data: JKPUSData, device="cpu"):
         use_context=config["use_context"],
         use_state=config["use_state"],
         static_allocator=config.get("static_allocator", False),
+        linear_characteristics=config.get("linear_characteristics", False),
+        conditional_scores=config.get("conditional_scores", False),
     ).to(device)
     state = torch.load(result_dir / "model.pt", map_location=device, weights_only=True)
     model.load_state_dict(state)
@@ -43,7 +45,8 @@ def canonical_scores(
     transform: torch.Tensor,
 ) -> torch.Tensor:
     h = model.encoder(x)
-    raw = model.factor_head(h)
+    raw = model.factor_head(x if model.linear_characteristics else h)
+    raw = raw / torch.sqrt(raw.square().mean(dim=0, keepdim=True) + 1e-6)
     return raw @ transform
 
 
@@ -171,13 +174,14 @@ def permutation_interactions(
     ).reset_index(drop=True)
 
 
-def dominant_factor_profile(
+def factor_profile(
     model: NeuralFactorModel,
     data: JKPUSData,
     scaler,
     transform: np.ndarray,
     start: str,
     end: str,
+    factor: int = 0,
     quantile: float = 0.1,
 ) -> pd.DataFrame:
     transform_t = torch.tensor(transform, dtype=torch.float32)
@@ -186,7 +190,7 @@ def dominant_factor_profile(
         for panel in data.iter_year(year, start, end, scaler):
             x = torch.tensor(panel.x, dtype=torch.float32)
             with torch.no_grad():
-                score = canonical_scores(model, x, transform_t)[:, 0].numpy()
+                score = canonical_scores(model, x, transform_t)[:, factor].numpy()
             n_tail = max(1, int(len(score) * quantile))
             order = np.argsort(score)
             low = panel.x[order[:n_tail]].mean(axis=0)
@@ -194,11 +198,18 @@ def dominant_factor_profile(
             differences.append(high - low)
     average = np.mean(differences, axis=0)
     out = pd.DataFrame({
+        "factor": factor + 1,
         "characteristic": data.characteristics,
         "top_minus_bottom": average,
         "abs_top_minus_bottom": np.abs(average),
     })
     return out.sort_values("abs_top_minus_bottom", ascending=False).reset_index(drop=True)
+
+
+def dominant_factor_profile(*args, **kwargs) -> pd.DataFrame:
+    """Backward-compatible alias for canonical factor 1."""
+    kwargs.setdefault("factor", 0)
+    return factor_profile(*args, **kwargs)
 
 
 def allocator_state_links(
@@ -224,3 +235,68 @@ def allocator_state_links(
     return pd.DataFrame(rows).sort_values(
         ["factor", "correlation"], ascending=[True, False]
     ).reset_index(drop=True)
+
+
+def panelwise_permutation_interactions(
+    model: NeuralFactorModel,
+    data: JKPUSData,
+    scaler,
+    transform: np.ndarray,
+    start: str,
+    end: str,
+    top_characteristics: list[str],
+    factor: int = 0,
+    max_months: int = 12,
+    seed: int = 42,
+) -> pd.DataFrame:
+    """Interaction diagnostic preserving each month's cross-sectional context."""
+    rng = np.random.default_rng(seed)
+    transform_t = torch.tensor(transform, dtype=torch.float32)
+    indices = {name: data.characteristics.index(name) for name in top_characteristics}
+    pairs = [(a, b) for i, a in enumerate(top_characteristics) for b in top_characteristics[i + 1:]]
+    squared = {pair: [] for pair in pairs}
+    used = 0
+    for year in data.years(start, end):
+        for panel in data.iter_year(year, start, end, scaler):
+            if used >= max_months:
+                break
+            x = panel.x.astype(np.float32, copy=True)
+            x0 = torch.tensor(x, dtype=torch.float32)
+            with torch.no_grad():
+                base = canonical_scores(model, x0, transform_t)[:, factor].numpy()
+            scale = max(float(np.std(base, ddof=1)), 1e-12)
+            permutations = {name: rng.permutation(len(x)) for name in top_characteristics}
+            single = {}
+            for name in top_characteristics:
+                perturbed = x.copy()
+                col = indices[name]
+                perturbed[:, col] = x[permutations[name], col]
+                with torch.no_grad():
+                    single[name] = canonical_scores(
+                        model, torch.tensor(perturbed, dtype=torch.float32), transform_t
+                    )[:, factor].numpy()
+            for first, second in pairs:
+                perturbed = x.copy()
+                a, b = indices[first], indices[second]
+                perturbed[:, a] = x[permutations[first], a]
+                perturbed[:, b] = x[permutations[second], b]
+                with torch.no_grad():
+                    both = canonical_scores(
+                        model, torch.tensor(perturbed, dtype=torch.float32), transform_t
+                    )[:, factor].numpy()
+                contrast = base - single[first] - single[second] + both
+                squared[(first, second)].append(float(np.mean(contrast ** 2) / (scale ** 2)))
+            used += 1
+        if used >= max_months:
+            break
+
+    rows = []
+    for (first, second), values in squared.items():
+        rows.append({
+            "factor": factor + 1,
+            "characteristic_1": first,
+            "characteristic_2": second,
+            "normalized_interaction": float(np.sqrt(np.mean(values))) if values else np.nan,
+            "months": len(values),
+        })
+    return pd.DataFrame(rows).sort_values("normalized_interaction", ascending=False).reset_index(drop=True)

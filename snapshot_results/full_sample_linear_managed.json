@@ -1,0 +1,6 @@
+{
+  "selected_ridge": 0.05623413251903491,
+  "validation_sharpe": 2.6965689542991615,
+  "test_sharpe": 1.5106863757604747,
+  "n_factors": 125
+}

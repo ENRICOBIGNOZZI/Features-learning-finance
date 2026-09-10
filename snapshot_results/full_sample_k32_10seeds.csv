@@ -1,0 +1,2 @@
+kmax,runs,test_sharpe_mean,test_sharpe_median,test_sharpe_std,test_sharpe_p10,test_sharpe_p90,val_sharpe_mean,allocation_rank_mean,first_direction_share_mean
+32,10,1.376519402255602,1.4123495589007642,0.2803638543517087,1.0306791298617417,1.7562341323482002,2.447175870889679,1.43147887159463,0.8883124306057069
